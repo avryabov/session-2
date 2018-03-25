@@ -38,6 +38,7 @@ public class OutputFormatter {
     private SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy");
     private final char nonBreakingSpace = 0xA0;
     private DecimalFormat numberFormat = new DecimalFormat("#0");
+
     {
         numberFormat.setGroupingUsed(true);
         numberFormat.setGroupingSize(3);
@@ -46,7 +47,9 @@ public class OutputFormatter {
         decimalFormatSymbols.setGroupingSeparator(nonBreakingSpace);
         numberFormat.setDecimalFormatSymbols(decimalFormatSymbols);
     }
+
     private DecimalFormat moneyFormat = new DecimalFormat("#0.00");
+
     {
         moneyFormat.setGroupingUsed(true);
         moneyFormat.setGroupingSize(3);
@@ -109,7 +112,7 @@ public class OutputFormatter {
                 String str = "";
                 if (obj == null) {
                     str = "-";
-                    if(columnAlign[i] == null)
+                    if (columnAlign[i] == null)
                         columnAlign[i] = Align.LEFT;
                 }
                 if (obj instanceof String) {
