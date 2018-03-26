@@ -29,11 +29,17 @@ public class OutputFormatter {
     private PrintStream out;
 
     private enum Align {LEFT, MIDDLE, RIGHT}
+    private enum DataType {NULL, STRING, NUMBER, MONEY, DATE}
 
-    private int[] columnSize;
-    private Align[] columnAlign;
-    private String[][] dataStr;
-    private String horizontalBoundary;
+    private class ColumnParam {
+        int[] size;
+        Align[] align;
+
+        public ColumnParam(int[] size, Align[] align) {
+            this.size = size;
+            this.align = align;
+        }
+    }
 
     private SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy");
     private final char nonBreakingSpace = 0xA0;
@@ -65,99 +71,122 @@ public class OutputFormatter {
     }
 
     public void output(String[] names, Object[][] data) {
-        columnSize = new int[names.length];
-        columnAlign = new Align[names.length];
-        dataStr = new String[data.length][data.length != 0 ? data[0].length : 0];
-
-        parseDataToString(names, data);
-        getHorizontalBoundary();
+        ColumnParam columnParam = columnParam(names, data);
+        String horizontalBoundary = horizontalBoundary(columnParam);
 
         out.print(horizontalBoundary);
         for (int i = 0; i < names.length; i++) {
-            out.print("|" + alignString(names[i], columnSize[i], Align.MIDDLE));
+            out.print("|" + alignString(names[i], columnParam.size[i], Align.MIDDLE));
         }
         out.print("|\n");
         for (int j = 0; j < data.length; j++) {
             out.print(horizontalBoundary);
             for (int i = 0; i < data[j].length; i++) {
-                out.print("|" + alignString(dataStr[j][i], columnSize[i], columnAlign[i]));
+                out.print("|" + alignString(parseDataToString(data[j][i]), columnParam.size[i], columnParam.align[i]));
             }
             out.print("|\n");
         }
         out.print(horizontalBoundary);
     }
 
-    private void getHorizontalBoundary() {
+    private String horizontalBoundary(ColumnParam param) {
         StringBuilder stringBuilder = new StringBuilder();
-        for (int i = 0; i < columnSize.length; i++) {
+        for (int i = 0; i < param.size.length; i++) {
             stringBuilder.append("+");
-            for (int j = 0; j < columnSize[i]; j++) {
+            for (int j = 0; j < param.size[i]; j++) {
                 stringBuilder.append("-");
             }
         }
         stringBuilder.append("+\n");
-        horizontalBoundary = stringBuilder.toString();
+        return stringBuilder.toString();
     }
 
-    private void parseDataToString(String[] names, Object[][] data) {
-        for (int i = 0; i < columnSize.length; i++) {
-            if (names[i].length() > columnSize[i]) {
-                columnSize[i] = names[i].length();
+    private ColumnParam columnParam(String[] names, Object[][] data) {
+        ColumnParam columnParam = new ColumnParam(new int[names.length], new Align[names.length]);
+        for (int i = 0; i < columnParam.size.length; i++) {
+            if (names[i].length() > columnParam.size[i]) {
+                columnParam.size[i] = names[i].length();
             }
         }
-
         for (int j = 0; j < data.length; j++) {
             for (int i = 0; i < data[j].length; i++) {
-                Object obj = data[j][i];
-                String str = "";
-                if (obj == null) {
-                    str = "-";
-                    if (columnAlign[i] == null)
-                        columnAlign[i] = Align.LEFT;
+                switch (typeOf(data[j][i])) {
+                    case NULL:
+                        if(columnParam.align[i] == null)
+                            columnParam.align[i] = Align.LEFT;
+                        break;
+                    case STRING:
+                        columnParam.align[i] = Align.LEFT;
+                        break;
+                    case NUMBER:
+                        columnParam.align[i] = Align.RIGHT;
+                        break;
+                    case MONEY:
+                        columnParam.align[i] = Align.RIGHT;
+                        break;
+                    case DATE:
+                        columnParam.align[i] = Align.RIGHT;
+                        break;
                 }
-                if (obj instanceof String) {
-                    str = (String) obj;
-                    columnAlign[i] = Align.LEFT;
-                } else if (obj instanceof Integer) {
-                    Integer number = (Integer) obj;
-                    str = numberFormat.format(number);
-                    columnAlign[i] = Align.RIGHT;
-                } else if (obj instanceof Double) {
-                    Double money = (Double) obj;
-                    str = moneyFormat.format(money);
-                    columnAlign[i] = Align.RIGHT;
-                } else if (obj instanceof Date) {
-                    Date date = (Date) obj;
-                    str = dateFormat.format(date);
-                    columnAlign[i] = Align.RIGHT;
+                String str = parseDataToString(data[j][i]);
+                if (str.length() > columnParam.size[i]) {
+                    columnParam.size[i] = str.length();
                 }
-                if (str.length() > columnSize[i]) {
-                    columnSize[i] = str.length();
-                }
-                dataStr[j][i] = str;
             }
         }
-
+        return columnParam;
     }
 
-    private String alignString(String cell, int size, Align align) {
-        String str = "";
+    private DataType typeOf(Object data) {
+        if (data == null) {
+            return DataType.NULL;
+        }
+        if (data instanceof String) {
+           return DataType.STRING;
+        } else if (data instanceof Integer) {
+            return DataType.NUMBER;
+        } else if (data instanceof Double) {
+            return DataType.MONEY;
+        } else if (data instanceof Date) {
+            return DataType.DATE;
+        }
+        return DataType.NULL;
+    }
+
+    private String parseDataToString(Object data) {
+        switch (typeOf(data)) {
+            case NULL:
+                return "-";
+            case STRING:
+                return (String) data;
+            case NUMBER:
+                return numberFormat.format((Integer) data);
+            case MONEY:
+                return moneyFormat.format((Double) data);
+            case DATE:
+                return dateFormat.format((Date) data);
+        }
+        return "";
+    }
+
+    private String alignString(String str, int size, Align align) {
+        String result = "";
         switch (align) {
             case LEFT:
-                str = String.format("%-" + size + "s", cell);
+                result = String.format("%-" + size + "s", str);
                 break;
             case RIGHT:
-                str = String.format("%" + size + "s", cell);
+                result = String.format("%" + size + "s", str);
                 break;
             case MIDDLE:
-                int shift = (size - cell.length()) / 2;
+                int shift = (size - str.length()) / 2;
                 if (shift != 0) {
-                    str = String.format("%" + shift + "s", "");
+                    result = String.format("%" + shift + "s", "");
                 }
-                str += String.format("%-" + (size - shift) + "s", cell);
+                result += String.format("%-" + (size - shift) + "s", str);
                 break;
         }
-        return str;
+        return result;
     }
 
 }
