@@ -20,6 +20,7 @@ package ru.sbt.jschool.session;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
+import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Scanner;
@@ -27,7 +28,6 @@ import java.util.Scanner;
 import org.junit.Test;
 import ru.sbt.jschool.session2.CutString;
 import ru.sbt.jschool.session2.OutputFormatter;
-import ru.sbt.jschool.session2.Timestamp;
 
 import static org.junit.Assert.assertEquals;
 
@@ -135,7 +135,7 @@ public class OutputFormatterTest {
             case "money":
                 return Double.valueOf(str);
             case "timestamp":
-                return new Timestamp(str);
+                return Timestamp.valueOf(str);
             case "cut_str":
                 return new CutString(str, 15);
         }

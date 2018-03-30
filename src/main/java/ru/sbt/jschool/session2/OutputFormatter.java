@@ -17,11 +17,13 @@
 
 package ru.sbt.jschool.session2;
 
+import ru.sbt.jschool.session2.TableCell.*;
+
 import java.io.PrintStream;
-import java.text.DecimalFormat;
-import java.text.DecimalFormatSymbols;
-import java.text.SimpleDateFormat;
+import java.sql.Timestamp;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  */
@@ -30,36 +32,24 @@ public class OutputFormatter {
 
     private class ColumnParam {
         int[] size;
-        TableCell.Align[] align;
+        Align[] align;
 
-        public ColumnParam(int[] size, TableCell.Align[] align) {
+        public ColumnParam(int[] size, Align[] align) {
             this.size = size;
             this.align = align;
         }
     }
 
-    private SimpleDateFormat dateFormat = new SimpleDateFormat("dd.MM.yyyy");
-    private final char nonBreakingSpace = 0xA0;
-    private DecimalFormat numberFormat = new DecimalFormat("#0");
+    Map<Class, TableCell> typeMap = new HashMap<>();
 
     {
-        numberFormat.setGroupingUsed(true);
-        numberFormat.setGroupingSize(3);
-        DecimalFormatSymbols decimalFormatSymbols = new DecimalFormatSymbols();
-        decimalFormatSymbols.setDecimalSeparator(',');
-        decimalFormatSymbols.setGroupingSeparator(nonBreakingSpace);
-        numberFormat.setDecimalFormatSymbols(decimalFormatSymbols);
-    }
-
-    private DecimalFormat moneyFormat = new DecimalFormat("#0.00");
-
-    {
-        moneyFormat.setGroupingUsed(true);
-        moneyFormat.setGroupingSize(3);
-        DecimalFormatSymbols decimalFormatSymbols = new DecimalFormatSymbols();
-        decimalFormatSymbols.setDecimalSeparator(',');
-        decimalFormatSymbols.setGroupingSeparator(nonBreakingSpace);
-        moneyFormat.setDecimalFormatSymbols(decimalFormatSymbols);
+        typeMap.put(Object.class, new NullCell());
+        typeMap.put(String.class, new StringCell());
+        typeMap.put(Double.class, new MoneyCell());
+        typeMap.put(Integer.class, new NumberCell());
+        typeMap.put(Date.class, new DateCell());
+        typeMap.put(Timestamp.class, new TimestampCell());
+        typeMap.put(CutString.class, new CutStringCell());
     }
 
     public OutputFormatter(PrintStream out) {
@@ -72,14 +62,18 @@ public class OutputFormatter {
 
         out.print(horizontalBoundary);
         for (int i = 0; i < names.length; i++) {
-            out.print("|" + alignString(names[i], columnParam.size[i], TableCell.Align.MIDDLE));
+            out.print("|" + alignString(names[i], columnParam.size[i], Align.MIDDLE));
         }
         out.print("|\n");
         for (int j = 0; j < data.length; j++) {
             out.print(horizontalBoundary);
             for (int i = 0; i < data[j].length; i++) {
-                TableCell cell = parseToTableCell(data[j][i]);
-                out.print("|" + alignString(cell.toString(), columnParam.size[i], columnParam.align[i]));
+                TableCell cell;
+                if (data[j][i] == null)
+                    cell = typeMap.get(Object.class);
+                else
+                    cell = typeMap.get(data[j][i].getClass());
+                out.print("|" + alignString(cell.data(data[j][i]), columnParam.size[i], columnParam.align[i]));
             }
             out.print("|\n");
         }
@@ -98,23 +92,8 @@ public class OutputFormatter {
         return stringBuilder.toString();
     }
 
-    private TableCell parseToTableCell(Object obj) {
-        if (obj instanceof TableCell)
-            return (TableCell) obj;
-        else if (obj instanceof String) {
-            return TableCell.valueOf((String) obj, TableCell.Align.LEFT);
-        } else if (obj instanceof Integer) {
-            return TableCell.valueOf(numberFormat.format((Integer) obj), TableCell.Align.RIGHT);
-        } else if (obj instanceof Double) {
-            return TableCell.valueOf(moneyFormat.format((Double) obj), TableCell.Align.RIGHT);
-        } else if (obj instanceof Date) {
-            return TableCell.valueOf(dateFormat.format((Date) obj), TableCell.Align.RIGHT);
-        }
-        return TableCell.valueOf("-", TableCell.Align.RIGHT);
-    }
-
     private ColumnParam columnParam(String[] names, Object[][] data) {
-        ColumnParam columnParam = new ColumnParam(new int[names.length], new TableCell.Align[names.length]);
+        ColumnParam columnParam = new ColumnParam(new int[names.length], new Align[names.length]);
         for (int i = 0; i < columnParam.size.length; i++) {
             if (names[i].length() > columnParam.size[i]) {
                 columnParam.size[i] = names[i].length();
@@ -122,18 +101,22 @@ public class OutputFormatter {
         }
         for (int j = 0; j < data.length; j++) {
             for (int i = 0; i < data[j].length; i++) {
-                TableCell cell = parseToTableCell(data[j][i]);
+                TableCell cell;
+                if (data[j][i] == null)
+                    cell = typeMap.get(Object.class);
+                else
+                    cell = typeMap.get(data[j][i].getClass());
                 if (columnParam.align[i] == null)
-                    columnParam.align[i] = cell.align();
-                if (cell.length() > columnParam.size[i]) {
-                    columnParam.size[i] = cell.length();
+                    columnParam.align[i] = cell.align(data[j][i]);
+                if (cell.length(data[j][i]) > columnParam.size[i]) {
+                    columnParam.size[i] = cell.length(data[j][i]);
                 }
             }
         }
         return columnParam;
     }
 
-    private String alignString(String str, int size, TableCell.Align align) {
+    private String alignString(String str, int size, Align align) {
         String result = "";
         switch (align) {
             case LEFT:
