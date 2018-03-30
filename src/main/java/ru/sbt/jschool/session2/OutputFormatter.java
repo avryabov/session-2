@@ -18,7 +18,6 @@
 package ru.sbt.jschool.session2;
 
 import java.io.PrintStream;
-import java.sql.Timestamp;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.SimpleDateFormat;
@@ -29,13 +28,11 @@ import java.util.Date;
 public class OutputFormatter {
     private PrintStream out;
 
-    private enum Align {LEFT, MIDDLE, RIGHT}
-
     private class ColumnParam {
         int[] size;
-        Align[] align;
+        TableCell.Align[] align;
 
-        public ColumnParam(int[] size, Align[] align) {
+        public ColumnParam(int[] size, TableCell.Align[] align) {
             this.size = size;
             this.align = align;
         }
@@ -69,55 +66,20 @@ public class OutputFormatter {
         this.out = out;
     }
 
-    private class Cell {
-        String data;
-        Align align;
-
-        public Cell(Object obj) {
-            if (obj == null) {
-                data = "-";
-                align = Align.LEFT;
-            } else if (obj instanceof String) {
-                data = (String) obj;
-                align = Align.LEFT;
-            } else if (obj instanceof Integer) {
-                data = numberFormat.format((Integer) obj);
-                align = Align.RIGHT;
-            } else if (obj instanceof Double) {
-                data = moneyFormat.format((Double) obj);
-                align = Align.RIGHT;
-            } else if (obj instanceof Timestamp) {
-                data = obj.toString();
-                align = Align.RIGHT;
-            } else if (obj instanceof Date) {
-                data = dateFormat.format((Date) obj);
-                align = Align.RIGHT;
-            } else if (obj instanceof CutString) {
-                CutString cutStr = (CutString) obj;
-                if (cutStr.str.length() <= cutStr.lengthLimit) {
-                    data = cutStr.str;
-                } else {
-                    data = cutStr.str.substring(0, cutStr.lengthLimit - 3) + "...";
-                }
-                align = Align.LEFT;
-            }
-        }
-    }
-
     public void output(String[] names, Object[][] data) {
         ColumnParam columnParam = columnParam(names, data);
         String horizontalBoundary = horizontalBoundary(columnParam);
 
         out.print(horizontalBoundary);
         for (int i = 0; i < names.length; i++) {
-            out.print("|" + alignString(names[i], columnParam.size[i], Align.MIDDLE));
+            out.print("|" + alignString(names[i], columnParam.size[i], TableCell.Align.MIDDLE));
         }
         out.print("|\n");
         for (int j = 0; j < data.length; j++) {
             out.print(horizontalBoundary);
             for (int i = 0; i < data[j].length; i++) {
-                Cell cell = new Cell(data[j][i]);
-                out.print("|" + alignString(cell.data, columnParam.size[i], columnParam.align[i]));
+                TableCell cell = parseToTableCell(data[j][i]);
+                out.print("|" + alignString(cell.toString(), columnParam.size[i], columnParam.align[i]));
             }
             out.print("|\n");
         }
@@ -136,8 +98,23 @@ public class OutputFormatter {
         return stringBuilder.toString();
     }
 
+    private TableCell parseToTableCell(Object obj) {
+        if (obj instanceof TableCell)
+            return (TableCell) obj;
+        else if (obj instanceof String) {
+            return TableCell.valueOf((String) obj, TableCell.Align.LEFT);
+        } else if (obj instanceof Integer) {
+            return TableCell.valueOf(numberFormat.format((Integer) obj), TableCell.Align.RIGHT);
+        } else if (obj instanceof Double) {
+            return TableCell.valueOf(moneyFormat.format((Double) obj), TableCell.Align.RIGHT);
+        } else if (obj instanceof Date) {
+            return TableCell.valueOf(dateFormat.format((Date) obj), TableCell.Align.RIGHT);
+        }
+        return TableCell.valueOf("-", TableCell.Align.RIGHT);
+    }
+
     private ColumnParam columnParam(String[] names, Object[][] data) {
-        ColumnParam columnParam = new ColumnParam(new int[names.length], new Align[names.length]);
+        ColumnParam columnParam = new ColumnParam(new int[names.length], new TableCell.Align[names.length]);
         for (int i = 0; i < columnParam.size.length; i++) {
             if (names[i].length() > columnParam.size[i]) {
                 columnParam.size[i] = names[i].length();
@@ -145,18 +122,18 @@ public class OutputFormatter {
         }
         for (int j = 0; j < data.length; j++) {
             for (int i = 0; i < data[j].length; i++) {
-                Cell cell = new Cell(data[j][i]);
+                TableCell cell = parseToTableCell(data[j][i]);
                 if (columnParam.align[i] == null)
-                    columnParam.align[i] = cell.align;
-                if (cell.data.length() > columnParam.size[i]) {
-                    columnParam.size[i] = cell.data.length();
+                    columnParam.align[i] = cell.align();
+                if (cell.length() > columnParam.size[i]) {
+                    columnParam.size[i] = cell.length();
                 }
             }
         }
         return columnParam;
     }
 
-    private String alignString(String str, int size, Align align) {
+    private String alignString(String str, int size, TableCell.Align align) {
         String result = "";
         switch (align) {
             case LEFT:

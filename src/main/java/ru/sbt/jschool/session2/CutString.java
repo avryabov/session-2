@@ -1,9 +1,9 @@
 package ru.sbt.jschool.session2;
 
 
-public class CutString {
-    String str;
-    int lengthLimit;
+public class CutString implements TableCell {
+    private String str;
+    private int lengthLimit;
 
     public CutString(String str, int lengthLimit) {
         this.str = str;
@@ -11,7 +11,21 @@ public class CutString {
     }
 
     @Override
+    public int length() {
+        return Math.min(str.length(), lengthLimit);
+    }
+
+    @Override
+    public Align align() {
+        return Align.LEFT;
+    }
+
+    @Override
     public String toString() {
-        return str;
+        if (str.length() <= lengthLimit) {
+            return str;
+        } else {
+            return str.substring(0, lengthLimit - 3) + "...";
+        }
     }
 }
