@@ -1,0 +1,12 @@
+9
+number,timestamp,cut_str
+#,Время,Приветствие
+1,2018-01-01 01:59:02.123,Hello beautiful World!
+2,2018-02-02 02:59:02.456,Hello beautiful World!
+3,2018-03-03 03:59:02.789,Hello beautiful World!
+4,2018-04-04 12:59:02.123,Hello beautiful World!
+5,2018-05-05 13:59:02.456,Hello beautiful World!
+6,2018-06-06 14:59:02.789,Hello beautiful World!
+7,2018-07-07 21:59:02.123,Hello beautiful World!
+8,2018-08-08 22:59:02.456,Hello beautiful World!
+9,2018-09-09 23:59:02.789,Hello beautiful World!

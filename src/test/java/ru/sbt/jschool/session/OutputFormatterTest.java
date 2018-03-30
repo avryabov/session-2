@@ -20,10 +20,13 @@ package ru.sbt.jschool.session;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.PrintStream;
+import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Scanner;
+
 import org.junit.Test;
+import ru.sbt.jschool.session2.CutString;
 import ru.sbt.jschool.session2.OutputFormatter;
 
 import static org.junit.Assert.assertEquals;
@@ -31,24 +34,39 @@ import static org.junit.Assert.assertEquals;
 /**
  */
 public class OutputFormatterTest {
-    @Test public void testFormatter0() throws Exception {
+    @Test
+    public void testFormatter0() throws Exception {
         doTest("0");
     }
 
-    @Test public void testFormatter1() throws Exception {
+    @Test
+    public void testFormatter1() throws Exception {
         doTest("1");
     }
 
-    @Test public void testFormatter2() throws Exception {
+    @Test
+    public void testFormatter2() throws Exception {
         doTest("2");
     }
 
-    @Test public void testFormatter3() throws Exception {
+    @Test
+    public void testFormatter3() throws Exception {
         doTest("3");
     }
 
-    @Test public void testFormatter4() throws Exception {
+    @Test
+    public void testFormatter4() throws Exception {
         doTest("4");
+    }
+
+    @Test
+    public void testFormatter5() throws Exception {
+        doTest("5");
+    }
+
+    @Test
+    public void testFormatter6() throws Exception {
+        doTest("6");
     }
 
     private void doTest(String dir) throws Exception {
@@ -61,7 +79,7 @@ public class OutputFormatterTest {
         String[] names = sc.nextLine().split(",");
 
         Object[][] data = new Object[size][];
-        for (int i=0; i<size; i++) {
+        for (int i = 0; i < size; i++) {
             String[] strLine = sc.nextLine().split(",", -1);
 
             Object[] line = new Object[strLine.length];
@@ -75,10 +93,11 @@ public class OutputFormatterTest {
         File temp = File.createTempFile("test" + dir, "txt");
 
         temp.deleteOnExit();
-        try(FileOutputStream output = new FileOutputStream(temp)) {
+        try (FileOutputStream output = new FileOutputStream(temp)) {
             OutputFormatter formatter = new OutputFormatter(new PrintStream(output));
 
             formatter.output(names, data);
+            System.out.println();
         }
 
         try (Scanner actualOutput = new Scanner(temp);
@@ -92,8 +111,8 @@ public class OutputFormatterTest {
 
                 String actual = actualOutput.nextLine();
 
-                actual = actual.replace((char)160, (char)32);
-                expected = expected.replace((char)160, (char)32);
+                actual = actual.replace((char) 160, (char) 32);
+                expected = expected.replace((char) 160, (char) 32);
 
                 assertEquals(expected, actual);
             }
@@ -115,6 +134,10 @@ public class OutputFormatterTest {
                 return dateFormat.parse(str);
             case "money":
                 return Double.valueOf(str);
+            case "timestamp":
+                return Timestamp.valueOf(str);
+            case "cut_str":
+                return new CutString(str, 15);
         }
 
         throw new RuntimeException("Unknown data type: " + type);

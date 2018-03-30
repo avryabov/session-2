@@ -18,6 +18,7 @@
 package ru.sbt.jschool.session2;
 
 import java.io.PrintStream;
+import java.sql.Timestamp;
 import java.text.DecimalFormat;
 import java.text.DecimalFormatSymbols;
 import java.text.SimpleDateFormat;
@@ -29,7 +30,6 @@ public class OutputFormatter {
     private PrintStream out;
 
     private enum Align {LEFT, MIDDLE, RIGHT}
-    private enum DataType {NULL, STRING, NUMBER, MONEY, DATE}
 
     private class ColumnParam {
         int[] size;
@@ -65,9 +65,43 @@ public class OutputFormatter {
         moneyFormat.setDecimalFormatSymbols(decimalFormatSymbols);
     }
 
-
     public OutputFormatter(PrintStream out) {
         this.out = out;
+    }
+
+    private class Cell {
+        String data;
+        Align align;
+
+        public Cell(Object obj) {
+            if (obj == null) {
+                data = "-";
+                align = Align.LEFT;
+            } else if (obj instanceof String) {
+                data = (String) obj;
+                align = Align.LEFT;
+            } else if (obj instanceof Integer) {
+                data = numberFormat.format((Integer) obj);
+                align = Align.RIGHT;
+            } else if (obj instanceof Double) {
+                data = moneyFormat.format((Double) obj);
+                align = Align.RIGHT;
+            } else if (obj instanceof Timestamp) {
+                data = obj.toString();
+                align = Align.RIGHT;
+            } else if (obj instanceof Date) {
+                data = dateFormat.format((Date) obj);
+                align = Align.RIGHT;
+            } else if (obj instanceof CutString) {
+                CutString cutStr = (CutString) obj;
+                if (cutStr.str.length() <= cutStr.lengthLimit) {
+                    data = cutStr.str;
+                } else {
+                    data = cutStr.str.substring(0, cutStr.lengthLimit - 3) + "...";
+                }
+                align = Align.LEFT;
+            }
+        }
     }
 
     public void output(String[] names, Object[][] data) {
@@ -82,7 +116,8 @@ public class OutputFormatter {
         for (int j = 0; j < data.length; j++) {
             out.print(horizontalBoundary);
             for (int i = 0; i < data[j].length; i++) {
-                out.print("|" + alignString(parseDataToString(data[j][i]), columnParam.size[i], columnParam.align[i]));
+                Cell cell = new Cell(data[j][i]);
+                out.print("|" + alignString(cell.data, columnParam.size[i], columnParam.align[i]));
             }
             out.print("|\n");
         }
@@ -110,63 +145,15 @@ public class OutputFormatter {
         }
         for (int j = 0; j < data.length; j++) {
             for (int i = 0; i < data[j].length; i++) {
-                switch (typeOf(data[j][i])) {
-                    case NULL:
-                        if(columnParam.align[i] == null)
-                            columnParam.align[i] = Align.LEFT;
-                        break;
-                    case STRING:
-                        columnParam.align[i] = Align.LEFT;
-                        break;
-                    case NUMBER:
-                        columnParam.align[i] = Align.RIGHT;
-                        break;
-                    case MONEY:
-                        columnParam.align[i] = Align.RIGHT;
-                        break;
-                    case DATE:
-                        columnParam.align[i] = Align.RIGHT;
-                        break;
-                }
-                String str = parseDataToString(data[j][i]);
-                if (str.length() > columnParam.size[i]) {
-                    columnParam.size[i] = str.length();
+                Cell cell = new Cell(data[j][i]);
+                if (columnParam.align[i] == null)
+                    columnParam.align[i] = cell.align;
+                if (cell.data.length() > columnParam.size[i]) {
+                    columnParam.size[i] = cell.data.length();
                 }
             }
         }
         return columnParam;
-    }
-
-    private DataType typeOf(Object data) {
-        if (data == null) {
-            return DataType.NULL;
-        }
-        if (data instanceof String) {
-           return DataType.STRING;
-        } else if (data instanceof Integer) {
-            return DataType.NUMBER;
-        } else if (data instanceof Double) {
-            return DataType.MONEY;
-        } else if (data instanceof Date) {
-            return DataType.DATE;
-        }
-        return DataType.NULL;
-    }
-
-    private String parseDataToString(Object data) {
-        switch (typeOf(data)) {
-            case NULL:
-                return "-";
-            case STRING:
-                return (String) data;
-            case NUMBER:
-                return numberFormat.format((Integer) data);
-            case MONEY:
-                return moneyFormat.format((Double) data);
-            case DATE:
-                return dateFormat.format((Date) data);
-        }
-        return "";
     }
 
     private String alignString(String str, int size, Align align) {
